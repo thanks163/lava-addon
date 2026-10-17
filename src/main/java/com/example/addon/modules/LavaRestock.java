@@ -10,18 +10,9 @@ import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.player.FindItemResult;
 import meteordevelopment.meteorclient.utils.player.InvUtils;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
-/**
- * LavaRestock
- *
- * 1) Kalau slot hotbar yang lagi dipegang isinya empty bucket (atau kosong),
- *    ambil lava bucket dari inventory utama dan taruh di slot itu.
- * 2) Gabungin empty bucket di inventory utama jadi stack (maks 16).
- *
- * Catatan: belum dites di 1.21.11, nama method bisa perlu disesuaikan.
- */
 public class LavaRestock extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
 
@@ -61,7 +52,7 @@ public class LavaRestock extends Module {
 
     @EventHandler
     private void onTick(TickEvent.Post event) {
-        if (mc.player == null || mc.interactionManager == null) return;
+        if (mc.player == null || mc.gameMode == null) return;
 
         if (timer > 0) {
             timer--;
@@ -78,35 +69,31 @@ public class LavaRestock extends Module {
         }
     }
 
-    /** @return true kalau ada aksi inventory yang dilakukan. */
     private boolean doRestock() {
         int selected = mc.player.getInventory().getSelectedSlot();
-        ItemStack hand = mc.player.getInventory().getStack(selected);
+        ItemStack hand = mc.player.getInventory().getItem(selected);
 
-        if (!hand.isEmpty() && !hand.isOf(Items.BUCKET)) return false;
+        if (!hand.isEmpty() && !hand.is(Items.BUCKET)) return false;
 
-        // Cari lava bucket di inventory utama (slot 9..35)
-        FindItemResult lava = InvUtils.find(stack -> stack.isOf(Items.LAVA_BUCKET), 9, 35);
+        FindItemResult lava = InvUtils.find(stack -> stack.is(Items.LAVA_BUCKET), 9, 35);
         if (!lava.found()) return false;
 
         InvUtils.move().from(lava.slot()).toHotbar(selected);
         return true;
     }
 
-    /** @return true kalau ada aksi merge yang dilakukan. */
     private boolean doMerge() {
         int target = -1;
         int targetCount = -1;
         int source = -1;
         int sourceCount = Integer.MAX_VALUE;
 
-        // Target: stack empty bucket paling penuh yang belum 16.
         for (int i = 9; i <= 35; i++) {
-            ItemStack stack = mc.player.getInventory().getStack(i);
-            if (!stack.isOf(Items.BUCKET)) continue;
+            ItemStack stack = mc.player.getInventory().getItem(i);
+            if (!stack.is(Items.BUCKET)) continue;
 
             int count = stack.getCount();
-            if (count < stack.getMaxCount() && count > targetCount) {
+            if (count < stack.getMaxStackSize() && count > targetCount) {
                 target = i;
                 targetCount = count;
             }
@@ -114,12 +101,11 @@ public class LavaRestock extends Module {
 
         if (target == -1) return false;
 
-        // Source: stack empty bucket lain yang paling kecil.
         for (int i = 9; i <= 35; i++) {
             if (i == target) continue;
 
-            ItemStack stack = mc.player.getInventory().getStack(i);
-            if (!stack.isOf(Items.BUCKET)) continue;
+            ItemStack stack = mc.player.getInventory().getItem(i);
+            if (!stack.is(Items.BUCKET)) continue;
 
             int count = stack.getCount();
             if (count < sourceCount) {
